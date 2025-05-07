@@ -57,7 +57,7 @@ app.use('/uploads', express.static('uploads'));
 db;
 
 app.get("/", (req, res) => {
-  res.json({ message: "Testing..." });
+  res.json({ message: `G-Pay backend runs on ${process.env.MODE} mode` });
 });
 
 
