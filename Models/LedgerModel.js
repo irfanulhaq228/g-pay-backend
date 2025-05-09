@@ -13,6 +13,7 @@ const ledgerSchema = new mongoose.Schema({
     bankId: { type: mongoose.Schema.Types.ObjectId, ref: 'Bank' },
     merchantId: { type: mongoose.Schema.Types.ObjectId, ref: 'Merchant' },
     adminId: { type: mongoose.Schema.Types.ObjectId, ref: 'Admin' },
+    adminStaffId: { type: mongoose.Schema.Types.ObjectId, ref: 'AdminStaff' },
     image: { type: String },
     website: { type: String },
     utr: { type: String },

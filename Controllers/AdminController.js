@@ -69,6 +69,17 @@ const loginAdmin = async (req, res) => {
                 return res.status(400).json({ message: "Incorrect Email or Password" })
             }
 
+            var ipInfo = getIP(req);
+            const look = lookup(ipInfo?.clientIp);
+            const city = `${look?.city}, ${look?.region} ${look?.country}`
+
+            await loginHistoryModel.create({
+                ip: ipInfo?.clientIp,
+                city,
+                adminStaffId: dataStaff?._id,
+                loginDate: moment().format("DD MMM YYYY, hh:mm A")
+            });
+
             const adminId = dataStaff?.adminId?._id;
             const token = jwt.sign({ adminId }, process.env.JWT_SECRET, { expiresIn: '30d' });
             return res.status(200).json({ message: "Staff Logged In", token: token, data: dataStaff, type: 'staff' });
@@ -78,6 +89,7 @@ const loginAdmin = async (req, res) => {
 
 
     } catch (error) {
+        console.log("Error: ", error)
         return res.status(500).json({ message: "Server Error!" })
     }
 };

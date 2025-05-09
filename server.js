@@ -38,6 +38,8 @@ const BankNamesRoutes = require("./Routes/BankNamesRoutes.js");
 const ExcelWithdrawRoutes = require("./Routes/ExcelWithdrawRoutes.js");
 const ExcelFileRoutes = require("./Routes/ExcelFileRoutes.js");
 const WalletTransferRouter = require("./Routes/walletTransferRoutes.js");
+const locationRouters = require("./Routes/LocationRoutes.js");
+const portalRouter = require("./Routes/PortalRoutes.js");
 
 dotenv.config();
 const app = express();
@@ -82,6 +84,8 @@ app.use("/ticket", TicketRouter);
 app.use("/approval", ApprovalRouter);
 app.use("/slip", TransactionSlipRoutes);
 app.use("/wallet-transfer", WalletTransferRouter);
+app.use("/location", locationRouters);
+app.use("/portal", portalRouter);
 
 // const extractPdfData = (pdfPath) => {
 //     return new Promise((resolve, reject) => {

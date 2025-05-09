@@ -12,7 +12,7 @@ const addData = async (item, adminId, excelId) => {
     try {
         const merchantData = await Merchant.findById(adminId);
 
-        if (item && item['Account Holder Name'] && item['Amount'] && item['Account Number'] && item['IFSC Number']) {
+        if (item && item['Account Holder Name'] && item['Amount'] && item['Account Number'] && item['IFSC Number'] && item['Bank Name']) {
             const amount = Number(item['Amount']) || 0; // Ensure amount is a number
 
             const adminTotal = (amount * merchantData?.payoutCommision) / 100;
@@ -23,6 +23,7 @@ const addData = async (item, adminId, excelId) => {
                 exchangeId: process.env.EXCHANGE_ID,
                 merchantId: adminId,
                 withdrawAmount: merchantTotal,
+                bankName: item['Bank Name'],
                 adminAmount: adminTotal,
                 amount: amount, // Ensuring proper number type
                 account: item['Account Number'],
@@ -73,7 +74,7 @@ const uploadExcelData = async (req, res) => {
         const merchantData = await Merchant.findById(adminId);
 
         // Define required headers
-        const requiredHeaders = ['Account Holder Name', 'Amount', 'Account Number', 'IFSC Number'];
+        const requiredHeaders = ['Account Holder Name', 'Bank Name', 'Amount', 'Account Number', 'IFSC Number'];
         const fileHeaders = Object.keys(jsonData[0]);
 
         // Validate headers

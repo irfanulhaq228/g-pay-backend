@@ -9,6 +9,7 @@ const adminStaffSchema = new mongoose.Schema({
     ledgerBank: { type: Array, required: false },
     ledgerMerchant: { type: Array, required: false },
     block: { type: Boolean, required: false, default: false },
+    type: {type: String, required: true},
     createdAt: {
         type: Date,
         default: () => new Date(Date.now() + 5.5 * 60 * 60 * 1000), // Adjust to IST

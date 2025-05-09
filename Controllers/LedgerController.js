@@ -90,6 +90,7 @@ const imageUploadData = async (req, res) => {
 const createData = async (req, res) => {
     try {
         const { website, bankId, total, utr } = req.body;
+        
 
         if (!website) {
             return res.status(400).json({ status: 'fail', message: 'Please provide website!' });
@@ -305,7 +306,7 @@ const getAllAdminData = async (req, res) => {
         }
 
 
-        const data = await Ledger.find(query).populate(["bankId", "merchantId"]).sort({ createdAt: -1 }).limit(limit * 1).skip((page - 1) * limit).exec();
+        const data = await Ledger.find(query).populate(["bankId", "merchantId", "adminStaffId"]).sort({ createdAt: -1 }).limit(limit * 1).skip((page - 1) * limit).exec();
 
         const count = await Ledger.countDocuments(query);
 
@@ -1869,7 +1870,8 @@ const getBankMerchantDataByAdmin = async (req, res) => {
 const updateData = async (req, res) => {
     try {
         let id = req.params.id;
-
+        console.log("update request: ", req.body);
+        
 
         let getImage = await Ledger.findById(id);
         const image = req.file === undefined ? getImage?.image : req.file?.path;
@@ -1937,13 +1939,27 @@ const updateData = async (req, res) => {
             }
 
         }
+        
+        if(req.body.status === "Decline" && getImage?.status === "Approved"){
+            await Merchant.findByIdAndUpdate(getImage.merchantId, { $inc: { wallet: -getImage?.merchantTotal } }, { new: true });
+
+            let bankData = await Bank.findById(getImage?.bankId);
+
+            const remainingTransLimit = bankData?.remainingTransLimit + 1
+            const remainingLimit = bankData?.remainingLimit + getImage?.total
+
+            await Bank.findByIdAndUpdate(bankData?._id,
+                { remainingTransLimit: remainingTransLimit },
+                { remainingLimit: remainingLimit },
+            );
+        }
 
         const data = await Ledger.findByIdAndUpdate(id,
             { ...req.body, image: image, activity },
             { new: true });
 
 
-        const updateDataLedger = await Ledger.findById(data?._id).populate(['merchantId', "bankId"])
+        const updateDataLedger = await Ledger.findById(data?._id).populate(['merchantId', "bankId", "adminStaffId"])
 
 
         notifyUsers(getImage.merchantId, "ledgerUpdated", { type: "updated", ledger: updateDataLedger });

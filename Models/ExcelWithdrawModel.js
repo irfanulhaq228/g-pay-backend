@@ -11,6 +11,7 @@ const excelWithdrawSchema = new mongoose.Schema({
     note: { type: String, },
     utr: { type: String, },
     username: { type: String, },
+    bankName: {type: String},
     exchangeId: { type: mongoose.Schema.Types.ObjectId, ref: 'Exchange' },
     excelFileId: { type: mongoose.Schema.Types.ObjectId, ref: 'ExcelFile' },
     account: { type: String, },

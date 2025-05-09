@@ -38,8 +38,6 @@ console.log(adminId);
             return res.status(400).json({ status: 'fail', message: 'You have insufficient balance to withdraw!' });
         }
 
-
-
         const image = req.file;
 
         const data = await Withdraw.create({
@@ -119,7 +117,7 @@ const getAllMerchantData = async (req, res) => {
 
         // Find data created by the agent, sorted by `createdAt` in descending order
         const data = await Withdraw.find(query).sort({ createdAt: -1 })
-            .populate(["exchangeId", "merchantId", "withdrawBankId"])
+            .populate(["exchangeId", "merchantId", "withdrawBankId", "locationId", "portalId", 'adminStaffId' ])
             .limit(limit * 1)
             .skip((page - 1) * limit)
             .exec();

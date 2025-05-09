@@ -123,8 +123,8 @@ const getDataByWebsite = async (req, res) => {
         const website = req.query.website;
 
         console.log(website);
-        
-        const data = await Merchant.findOne({website:website}).select('-password');
+
+        const data = await Merchant.findOne({ website: website }).select('-password');
         return res.status(200).json({ status: 'ok', data });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -190,7 +190,7 @@ const loginData = async (req, res) => {
             await loginHistoryModel.create({
                 ip: ipInfo?.clientIp,
                 city,
-                adminId: data?._id,
+                merchantId: data?._id,
                 loginDate: moment().format("DD MMM YYYY, hh:mm A")
             });
 
@@ -199,18 +199,40 @@ const loginData = async (req, res) => {
             return res.status(200).json({ message: "Merchant Logged In", token: token, data: data, type: 'merchant' });
 
         }
-        else if(dataStaff) {
+        else if (dataStaff) {
             if (dataStaff?.block) {
-                return res.status(400).json({ message: "Staff blocked from merchant." });
+                if (dataStaff?.type === "staff") {
+                    return res.status(400).json({ message: "The Merchant is Blocked" });
+                } else {
+                    return res.status(400).json({ message: "Staff blocked from merchant." });
+                }
+            }
+            console.log(dataStaff);
+            if (dataStaff?.merchantId?.block) {
+                return res.status(400).json({ message: "The Merchant is Blocked" })
             }
             if (dataStaff?.password !== password) {
                 return res.status(400).json({ message: "Incorrect Email or Password" })
+            };
+
+            if (dataStaff?.type === "staff") {
+                var ipInfo = getIP(req);
+                const look = lookup(ipInfo?.clientIp);
+
+                const city = `${look?.city}, ${look?.region} ${look?.country}`
+
+                await loginHistoryModel.create({
+                    ip: ipInfo?.clientIp,
+                    city,
+                    merchantId: dataStaff?.merchantId?._id,
+                    loginDate: moment().format("DD MMM YYYY, hh:mm A")
+                });
             }
 
             const adminId = dataStaff?.merchantId?._id;
             const token = jwt.sign({ adminId }, process.env.JWT_SECRET, { expiresIn: '30d' });
             return res.status(200).json({ message: "Staff Logged In", token: token, data: dataStaff, type: 'staff' });
-        }else{
+        } else {
             return res.status(400).json({ message: "Incorrect Email or Password" });
         }
 

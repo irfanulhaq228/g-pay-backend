@@ -37,12 +37,23 @@ const getAllData = async (req, res) => {
          if (!adminId) {
              return res.status(400).json({ status: 'fail', message: 'Admin not found!' });
          }
+
+         const { adminStaffId, merchantId } = req.query;
  
          // Find data created by the agent, sorted by `createdAt` in descending order
-         const data = await LoginHistory.find({ adminId }).sort({ createdAt: -1 });
+         let query = {};
 
- 
-        return res.status(200).json({ status: 'ok', data });
+         if (adminStaffId) {
+           query.adminStaffId = adminStaffId;
+         } else if (merchantId) {
+           query.merchantId = merchantId;
+         } else {
+           query.adminId = adminId;
+         }
+         
+         const data = await LoginHistory.find(query).sort({ createdAt: -1 });
+         
+         return res.status(200).json({ status: 'ok', data });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }

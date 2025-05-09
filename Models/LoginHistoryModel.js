@@ -5,6 +5,8 @@ const loginHistorySchema = new mongoose.Schema({
     isp: { type: String, required: false, default: 'unknown' },
     city: { type: String, required: false },
     adminId: { type: mongoose.Schema.Types.ObjectId, ref: 'Admin' },
+    adminStaffId: { type: mongoose.Schema.Types.ObjectId, ref: 'AdminStaff' },
+    merchantId: { type: mongoose.Schema.Types.ObjectId, ref: 'Merchant' },
     loginDate: { type: String, required: false},
     logoutDate: { type: String, required: false, default:'-'},
     createdAt: {
