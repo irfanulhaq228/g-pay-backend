@@ -6,9 +6,11 @@ const jwt = require('jsonwebtoken');
 const createData = async (req, res) => {
     try {
 
+        const ip = req.headers['x-forwarded-for']?.split(',')[0] || req.connection.remoteAddress;
 
         const data = await LoginHistory.create({
-            ...req.body
+            ...req.body,
+            ip: ip
         });
 
         return res.status(200).json({ status: 'ok', data , message: 'Data Created Successfully!' });
