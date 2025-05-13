@@ -31,6 +31,7 @@ const ledgerSchema = new mongoose.Schema({
     site: { type: String },
     utrType: { type: String, default: "auto" },
     transactionReason: { type: String },
+    walletCredit: {type: Boolean, default: false},
     approval: { type: Boolean, default: false }, // New field for transaction number
     trnNo: { type: String, unique: true }, // New field for transaction number
     trnStatus: { type: String, default: 'Transaction Pending' }, // New field for transaction number

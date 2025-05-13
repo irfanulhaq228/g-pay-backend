@@ -90,7 +90,7 @@ const imageUploadData = async (req, res) => {
 const createData = async (req, res) => {
     try {
         const { website, bankId, total, utr } = req.body;
-        
+
 
         if (!website) {
             return res.status(400).json({ status: 'fail', message: 'Please provide website!' });
@@ -1871,7 +1871,7 @@ const updateData = async (req, res) => {
     try {
         let id = req.params.id;
         console.log("update request: ", req.body);
-        
+
 
         let getImage = await Ledger.findById(id);
         const image = req.file === undefined ? getImage?.image : req.file?.path;
@@ -1888,8 +1888,8 @@ const updateData = async (req, res) => {
 
 
 
-        if (req.body.status === 'Approved') {
-
+        if (req.body.status === 'Approved' && getImage?.trnStatus === 'Transaction Pending') {
+            console.log("=========================================================================================")
             let bankData = await Bank.findById(getImage?.bankId);
             await Merchant.findByIdAndUpdate(getImage.merchantId, { $inc: { wallet: getImage?.merchantTotal } }, { new: true });
 
@@ -1897,10 +1897,10 @@ const updateData = async (req, res) => {
             const remainingTransLimit = bankData?.remainingTransLimit - 1
             const remainingLimit = bankData?.remainingLimit - getImage?.total
 
-            
 
 
-            if ((remainingTransLimit === 0) && (remainingLimit<=0)) {
+
+            if ((remainingTransLimit === 0) && (remainingLimit <= 0)) {
 
                 await Bank.findOneAndUpdate({ _id: bankData?._id }, { block: true }, { new: true });
                 await BankLog.create({ bankId: bankData?._id, status: 'InActive', reason: 'Due to Transaction Limit Exceed.' })
@@ -1910,7 +1910,7 @@ const updateData = async (req, res) => {
                     accountType: bankData?.accountType,
                     $expr: {
                         $and: [
-                            { $gt: ["$remainingLimit",  getImage?.total] },
+                            { $gt: ["$remainingLimit", getImage?.total] },
                             { $gt: ["$remainingTransLimit", 1] }
                         ]
                     }
@@ -1932,15 +1932,16 @@ const updateData = async (req, res) => {
                 await BankLog.create({ bankId: banks[0]?._id, status: 'Active', reason: 'Bank is Active automatically.' })
 
             }
-            else{
-                 await Bank.findByIdAndUpdate(bankData?._id,
+            else {
+                await Bank.findByIdAndUpdate(bankData?._id,
                     { remainingTransLimit, remainingLimit },
                     { new: true });
             }
 
         }
-        
-        if(req.body.status === "Decline" && getImage?.status === "Approved"){
+
+        if (req.body.status === "Decline" && getImage?.status === "Approved") {
+            
             await Merchant.findByIdAndUpdate(getImage.merchantId, { $inc: { wallet: -getImage?.merchantTotal } }, { new: true });
 
             let bankData = await Bank.findById(getImage?.bankId);
@@ -1954,10 +1955,17 @@ const updateData = async (req, res) => {
             );
         }
 
-        const data = await Ledger.findByIdAndUpdate(id,
-            { ...req.body, image: image, activity },
-            { new: true });
-
+        const data = await Ledger.findByIdAndUpdate(
+            id,
+            {
+                ...req.body,
+                image: image,
+                activity,
+                ...(req.body.status === "Approved" && !getImage?.walletCredit && { walletCredit: true }),
+                ...(req.body.status === "Decline" && getImage?.walletCredit && { walletCredit: false })
+            },
+            { new: true }
+        );
 
         const updateDataLedger = await Ledger.findById(data?._id).populate(['merchantId', "bankId", "adminStaffId"])
 
