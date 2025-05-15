@@ -1888,7 +1888,7 @@ const updateData = async (req, res) => {
 
 
 
-        if (req.body.status === 'Approved' && getImage?.trnStatus === 'Transaction Pending') {
+        if (req.body.status === 'Approved' && getImage?.trnStatus !== 'Approved') {
             console.log("=========================================================================================")
             let bankData = await Bank.findById(getImage?.bankId);
             await Merchant.findByIdAndUpdate(getImage.merchantId, { $inc: { wallet: getImage?.merchantTotal } }, { new: true });

@@ -1,5 +1,5 @@
 
-const { getAllData, createData, getDataById, updateData, deleteData, loginData, verifyData, webInfo, getDataByWebsite } = require('../Controllers/MerchantController')
+const { getAllData, createData, getDataById, updateData, deleteData, loginData, verifyData, webInfo, getDataByWebsite, checkMerchant } = require('../Controllers/MerchantController')
 const authenticate = require('../Middleware/auth')
 const { upload } = require('../Multer/Multer')
 
@@ -10,6 +10,7 @@ router.post('/create', upload.single('image'), authenticate, createData)
 router.get('/get/:id', getDataById)
 router.get('/getWebsite', getDataByWebsite)
 router.post('/web-info', webInfo)
+router.post('/check', checkMerchant)
 router.post('/login', loginData)
 router.post('/verify', authenticate, verifyData)
 router.put('/update/:id', upload.single('image'), updateData)
