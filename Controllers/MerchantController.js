@@ -284,8 +284,42 @@ const verifyData = async (req, res) => {
 };
 
 
+//4. Check Merchant Info
+const checkMerchant = async (req, res) => {
+    try {
+        const authHeader = req.headers.authorization;
+        if (!authHeader || !authHeader.startsWith("Bearer ")) {
+            return res.status(400).json({ message: 'No or invalid token provided' });
+        }
 
+        const token = authHeader.split(' ')[1];
+        console.log("token [1]", typeof token);
+        
+        if (!token || token === 'undefined' || token === 'null' || token === '') {
+            return res.status(400).json({ message: 'No token provided' });
+        }
 
+        jwt.verify(token, process.env.JWT_SECRET, async (err, decoded) => {
+            if (err) {
+                return res.status(403).json({ message: 'Failed to authenticate token' });
+            }
+            console.log("decoded", decoded);
+            const merchant = await Merchant.findById(decoded.adminId).select('block');
+
+            if (!merchant) {
+                return res.status(404).json({ message: 'Merchant not found' });
+            }
+
+            if (merchant.block === true) {
+                return res.status(400).json({ message: "Merchant is blocked" });
+            }
+
+            return res.status(200).json({ message: "Merchant is valid" });
+        });
+    } catch (error) {
+        return res.status(500).json({ status: 'fail', message: 'Error in checking merchant info' });
+    }
+};
 const webInfo = async (req, res) => {
     try {
         const { website } = req.body;
@@ -314,5 +348,6 @@ module.exports = {
     deleteData,
     loginData,
     verifyData,
+    checkMerchant,
     webInfo
 };
