@@ -10,6 +10,7 @@ const merchantSchema = new mongoose.Schema({
     phone: { type: String, required: false },
     email: { type: String, required: false },
     password: { type: String, required: false },
+    otp: { type: String, required: false, default: null },
     website: { type: String, required: false },
     merchantWebsite: { type: String, required: false },
     webhookUrl: { type: String, required: false },

@@ -27,6 +27,15 @@ const withdrawSchema = new mongoose.Schema({
         type: Date,
         default: () => new Date(Date.now() + 5.5 * 60 * 60 * 1000), // Adjust to IST
       },
+      withdrawLogs: {
+        type: [
+          {
+            status: {type: String },
+            actionBy: {type: String },
+            date: {type: Date, default: Date.now },
+          }
+        ]
+      }
 }, {
     timestamps: true
 });

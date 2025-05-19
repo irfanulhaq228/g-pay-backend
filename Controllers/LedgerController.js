@@ -16,7 +16,7 @@ const mongoose = require("mongoose");
 const { notifyUsers } = require('../socket/ledgerSocket');
 const merchantModel = require('../Models/MerchantModel');
 const withdrawModel = require('../Models/WithdrawModel');
-
+const cryptoExchangeModel = require('../Models/CryptoExchangeModel');
 
 
 // Function to extract amount and transaction ID from text
@@ -89,8 +89,7 @@ const imageUploadData = async (req, res) => {
 // 1. Create 
 const createData = async (req, res) => {
     try {
-        const { website, bankId, total, utr } = req.body;
-
+        let { website, bankId, total, utr } = req.body;
 
         if (!website) {
             return res.status(400).json({ status: 'fail', message: 'Please provide website!' });
@@ -110,12 +109,23 @@ const createData = async (req, res) => {
         const websiteData = await Merchant.findOne({ website });
         const bankData = await Bank.findOne({ _id: bankId });
 
+        if (bankData.accountType === "crypto") {
+            const { inr } = await cryptoExchangeModel.findOne()
+            if (!inr) {
+                return res.status(400).json({ status: 'fail', message: 'Crypto exchange rate not found!' });
+            }
+
+            req.body.dollarAmount = req.body.total;
+            const finalAmountAfterCryptoExchange = req.body.total * inr // indian-currency
+            req.body.total = finalAmountAfterCryptoExchange
+        }
+
         if (!bankData) {
             return res.status(404).json({ status: 'fail', message: 'Bank not found!' });
         }
 
         // Check if the bank has enough transaction limit and remaining limit
-        if (bankData.remainingTransLimit <= 1 || bankData.remainingLimit < total) {
+        if (bankData.remainingTransLimit <= 1 || bankData.remainingLimit < req.body.total) {
             // Block the bank if limits exceeded
             await Bank.findByIdAndUpdate(bankData._id, { block: true }, { new: true });
             await BankLog.create({ bankId: bankData._id, status: 'Inactive', reason: 'Bank blocked due to limit exceeded.' });
@@ -126,7 +136,7 @@ const createData = async (req, res) => {
                 block: false,
                 $expr: {
                     $and: [
-                        { $gt: ["$remainingLimit", total] },
+                        { $gt: ["$remainingLimit", req.body.total] },
                         { $gt: ["$remainingTransLimit", 1] }
                     ]
                 }
@@ -144,8 +154,8 @@ const createData = async (req, res) => {
         }
 
         // Calculate amounts
-        const adminTotal = (total * websiteData?.commision) / 100;
-        const merchantTotal = total - adminTotal;
+        const adminTotal = (req.body.total * websiteData?.commision) / 100;
+        const merchantTotal = req.body.total - adminTotal;
         const image = req.file?.path || "";
 
         // Create Ledger Entry
@@ -157,8 +167,7 @@ const createData = async (req, res) => {
             adminTotal,
             merchantTotal
         });
-
-
+        console.log("new ledger data", newLedger);
         const createDataLedger = await Ledger.findById(newLedger?._id).populate(['merchantId', "bankId"])
 
         notifyUsers(websiteData?._id, "ledgerUpdated", { type: "created", ledger: createDataLedger });
@@ -1887,6 +1896,36 @@ const updateData = async (req, res) => {
         }
 
 
+        if (req.body.status && req.body.status !== getImage?.status) {
+            const date = new Date(Date.now());
+            let actionBy = "Unknown";
+
+            if (req.body.adminStaffId) {
+                const staff = await AdminStaff.findById(req.body.adminStaffId);
+                if (staff) {
+                    console.log("Status updated by admin staff");
+                    actionBy = staff.userName;
+                }
+            } else {
+                console.log("Status updated by admin");
+                actionBy = "Admin";
+            }
+
+            await Ledger.findByIdAndUpdate(
+                id,
+                {
+                    $push: {
+                        transactionLogs: {
+                            status: req.body.status,
+                            actionBy,
+                            date,
+                            reason: req.body.reason,
+                        }
+                    }
+                }
+            );
+        }
+
 
         if (req.body.status === 'Approved' && getImage?.status !== 'Approved') {
             console.log("=========================================================================================")
@@ -1941,7 +1980,7 @@ const updateData = async (req, res) => {
         }
 
         if (req.body.status === "Decline" && getImage?.status === "Approved") {
-            
+
             await Merchant.findByIdAndUpdate(getImage.merchantId, { $inc: { wallet: -getImage?.merchantTotal } }, { new: true });
 
             let bankData = await Bank.findById(getImage?.bankId);

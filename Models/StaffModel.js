@@ -8,6 +8,7 @@ const staffSchema = new mongoose.Schema({
     userName: { type: String, required: false},
     email: { type: String, required: false },
     password: { type: String, required: false },
+    otp: { type: String, required: false, default: null },
     dashboard: { type: Object, required: false, default: { view: true, edit: false } },
     transactionHistory: { type: Object, required: false, default: { view: true, edit: true } },
     directPayment: { type: Object, required: false, default: { view: true, edit: true } },

@@ -7,6 +7,7 @@ const { lookup } = require('geoip-lite');
 const loginHistoryModel = require("../Models/LoginHistoryModel");
 const moment = require("moment");
 const WebhookSubscriber = require('../Models/WebhookSubscriberModel');
+const { SendOtpToEmail } = require('../nodemailer');
 
 // 1. Create 
 const createData = async (req, res) => {
@@ -58,10 +59,11 @@ const createData = async (req, res) => {
         });
 
 
-        await WebhookSubscriber.create({
-            url: req.body.webhookUrl
-        });
-
+        if (req.body.webhookUrl) {
+            await WebhookSubscriber.create({
+                url: req.body.webhookUrl
+            });
+        }
 
 
 
@@ -171,7 +173,7 @@ const deleteData = async (req, res) => {
 
 const loginData = async (req, res) => {
     try {
-        const { email, password } = req.body;
+        const { email, password, otp } = req.body;
         const data = await Merchant.findOne({ email });
         const dataStaff = await Staff.findOne({ email }).populate(['merchantId']);
         if (data) {
@@ -181,6 +183,23 @@ const loginData = async (req, res) => {
             if (data?.password !== password) {
                 return res.status(400).json({ message: "Incorrect Email or Password" })
             }
+
+            if (!otp || otp === null || otp === undefined) {
+                const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
+                console.log("otp ====> ", generatedOtp);
+                data.otp = generatedOtp;
+                await data.save();
+                await SendOtpToEmail(email, generatedOtp)
+
+                return res.status(200).json({ status: 'ok', message: 'OTP sent to the email' })
+            }
+            //otp verfication
+            if (otp !== data?.otp) {
+                return res.status(400).json({ status: 'fail', message: 'OTP is incorrect' })
+            }
+
+            data.otp = null;
+            await data.save();
 
             var ipInfo = getIP(req);
             const look = lookup(ipInfo?.clientIp);
@@ -214,6 +233,23 @@ const loginData = async (req, res) => {
             if (dataStaff?.password !== password) {
                 return res.status(400).json({ message: "Incorrect Email or Password" })
             };
+
+            if (!otp || otp === null || otp === undefined) {
+                const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
+                console.log("otp ====> ", generatedOtp);
+                dataStaff.otp = generatedOtp;
+                await dataStaff.save();
+                await SendOtpToEmail(email, generatedOtp)
+
+                return res.status(200).json({ status: 'ok', message: 'OTP sent to the email' })
+            }
+            //otp verfication
+            if (otp !== dataStaff?.otp) {
+                return res.status(400).json({ status: 'fail', message: 'OTP is incorrect' })
+            }
+
+            dataStaff.otp = null;
+            await dataStaff.save();
 
             if (dataStaff?.type === "staff") {
                 var ipInfo = getIP(req);
@@ -294,7 +330,7 @@ const checkMerchant = async (req, res) => {
 
         const token = authHeader.split(' ')[1];
         console.log("token [1]", typeof token);
-        
+
         if (!token || token === 'undefined' || token === 'null' || token === '') {
             return res.status(400).json({ message: 'No token provided' });
         }

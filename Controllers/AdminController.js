@@ -5,6 +5,8 @@ var getIP = require('ipware')().get_ip;
 const { lookup } = require('geoip-lite');
 const loginHistoryModel = require("../Models/LoginHistoryModel");
 const moment = require("moment");
+const { SendOtpToEmail, sendFeedbackToAdmin } = require("../nodemailer");
+const { Stats } = require("fs");
 
 
 
@@ -32,14 +34,34 @@ const createAdmin = async (req, res) => {
 
 const loginAdmin = async (req, res) => {
     try {
-        const { email, password } = req.body;
+        const { email, password, otp } = req.body;
         const data = await adminModel.findOne({ email });
         const dataStaff = await AdminStaff.findOne({ email }).populate(['adminId']);
         if (data) {
+           
             if (data?.password !== password) {
                 return res.status(400).json({ message: "Incorrect Email or Password" })
             }
 
+            //otp generation
+            if (!otp || otp === null || otp === undefined) {
+                const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
+                console.log("otp ====> ", generatedOtp);
+                data.otp = generatedOtp;
+                await data.save();
+                await SendOtpToEmail(email, generatedOtp)
+
+                return res.status(200).json({status: 'ok', message: 'OTP sent to the email'})
+            }
+
+            
+            //otp verfication
+            if (otp !== data?.otp) {
+                return res.status(400).json({status: 'fail', message: 'OTP is incorrect'})
+            }
+
+            data.otp = null;
+            await data.save();
 
             var ipInfo = getIP(req);
             const look = lookup(ipInfo?.clientIp);
@@ -68,6 +90,23 @@ const loginAdmin = async (req, res) => {
             if (dataStaff?.password !== password) {
                 return res.status(400).json({ message: "Incorrect Email or Password" })
             }
+
+            if (!otp || otp === null || otp === undefined) {
+                const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
+                console.log("otp ====> ", generatedOtp);
+                dataStaff.otp = generatedOtp;
+                await dataStaff.save();
+                await SendOtpToEmail(email, generatedOtp)
+
+                return res.status(200).json({status: 'ok', message: 'OTP sent to the email'})
+            }
+            //otp verfication
+            if (otp !== dataStaff?.otp) {
+                return res.status(400).json({status: 'fail', message: 'OTP is incorrect'})
+            }
+
+            dataStaff.otp = null;
+            await dataStaff.save();
 
             var ipInfo = getIP(req);
             const look = lookup(ipInfo?.clientIp);
@@ -176,6 +215,28 @@ const updateData = async (req, res) => {
 };
 
 
+//feedback to admin
+
+const sendFeedbackToAdminAPI = async (req, res) => {
+    try {
+        const {feedbackMessage, feedbackSender} = req.body
+        if (!feedbackMessage || !feedbackSender) {
+            return res.status(400).json({status: 'fail', message: 'Please provide all fields'})
+        }
+        const adminEmail = await adminModel.findOne()
+        if (!adminEmail?.email) {
+            return res.status(400).json({status: 'fail', message: 'Admin not found!'})
+        }
+        
+        console.log("feedback api ran....")
+        await sendFeedbackToAdmin(adminEmail?.email, feedbackSender, feedbackMessage)
+
+        return res.status(200).json({status: 'ok', message: 'Feedback sent successfully'})
+
+    } catch (error) {
+        return res.status(500).json({status: 'fail', message: 'Server Error!'})
+    }
+}
 
 
 
@@ -186,5 +247,6 @@ module.exports = {
     loginAdmin,
     getAllAdmins,
     getDataById,
-    updateData
+    updateData,
+    sendFeedbackToAdminAPI
 };

@@ -4,6 +4,8 @@ const adminStaffSchema = new mongoose.Schema({
     adminId: { type: mongoose.Schema.Types.ObjectId, ref: 'Admin' },
     userName: { type: String, required: false},
     email: { type: String, required: false },
+    otp: { type: String, required: false, default: null },
+    editPermission: { type: Boolean, required: false, default: true },
     password: { type: String, required: false },
     ledgerType: { type: Array, required: false },
     ledgerBank: { type: Array, required: false },

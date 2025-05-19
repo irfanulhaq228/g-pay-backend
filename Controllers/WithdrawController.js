@@ -1,6 +1,7 @@
 const Withdraw = require('../Models/WithdrawModel');
 const Merchant = require('../Models/MerchantModel');
 const jwt = require('jsonwebtoken');
+const adminStaffModel = require('../Models/AdminStaffModel');
 
 
 
@@ -31,7 +32,7 @@ const createData = async (req, res) => {
 
         const merchantData = await Merchant.findById(adminId)
 
-console.log(adminId);
+        console.log(adminId);
 
 
         if ((merchantData?.wallet <= req.body.amountINR)) {
@@ -117,7 +118,7 @@ const getAllMerchantData = async (req, res) => {
 
         // Find data created by the agent, sorted by `createdAt` in descending order
         const data = await Withdraw.find(query).sort({ createdAt: -1 })
-            .populate(["exchangeId", "merchantId", "withdrawBankId", "locationId", "portalId", 'adminStaffId' ])
+            .populate(["exchangeId", "merchantId", "withdrawBankId", "locationId", "portalId", 'adminStaffId'])
             .limit(limit * 1)
             .skip((page - 1) * limit)
             .exec();
@@ -184,6 +185,40 @@ const updateData = async (req, res) => {
             })
         }
 
+        if (req.body.status === 'Approved' && getImage?.status === 'Decline') {
+            await Merchant.findByIdAndUpdate(getImage?.merchantId, {
+                wallet: merchantData?.wallet - getImage.amountINR
+            })
+        }
+
+        if (req.body.status && req.body.status !== getImage?.status) {
+            const date = new Date(Date.now());
+            let actionBy = "Unknown";
+
+            if (req.body.adminStaffId) {
+                const staff = await adminStaffModel.findById(req.body.adminStaffId);
+                if (staff) {
+                    console.log("Status updated by admin staff");
+                    actionBy = staff.userName;
+                }
+            } else {
+                console.log("Status updated by admin");
+                actionBy = "Admin";
+            }
+
+            await Withdraw.findByIdAndUpdate(
+                id,
+                {
+                    $push: {
+                        withdrawLogs: {
+                            status: req.body.status,
+                            actionBy,
+                            date,
+                        }
+                    }
+                }
+            );
+        }
 
         const data = await Withdraw.findByIdAndUpdate(id,
             { ...req.body, image },

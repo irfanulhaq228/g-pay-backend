@@ -17,7 +17,8 @@ const ledgerSchema = new mongoose.Schema({
     image: { type: String },
     website: { type: String },
     utr: { type: String },
-    type: { type: String },
+    type: { type: String }, // crypt ( dollarAmount=100 )
+    dollarAmount: { type: Number },
     amount: { type: Number },
     tax: { type: Number },
     total: { type: Number },
@@ -43,6 +44,18 @@ const ledgerSchema = new mongoose.Schema({
         type: Date,
         default: () => new Date(Date.now() + 5.5 * 60 * 60 * 1000), // Adjust to IST
       },
+      transactionLogs: {
+        type: [
+            {
+                status: { type: String },
+                date: { type: Date, default: Date.now },
+                actionBy: { type: String,  },
+                reason: { type: String}
+            }
+        ],
+        default: []
+    },
+
 }, {
     timestamps: true
 });
