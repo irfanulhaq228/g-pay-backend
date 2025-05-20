@@ -184,22 +184,22 @@ const loginData = async (req, res) => {
                 return res.status(400).json({ message: "Incorrect Email or Password" })
             }
 
-            if (!otp || otp === null || otp === undefined) {
-                const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
-                console.log("otp ====> ", generatedOtp);
-                data.otp = generatedOtp;
-                await data.save();
-                await SendOtpToEmail(email, generatedOtp)
+            // if (!otp || otp === null || otp === undefined) {
+            //     const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
+            //     console.log("otp ====> ", generatedOtp);
+            //     data.otp = generatedOtp;
+            //     await data.save();
+            //     await SendOtpToEmail(email, generatedOtp)
 
-                return res.status(200).json({ status: 'ok', message: 'OTP sent to the email' })
-            }
-            //otp verfication
-            if (otp !== data?.otp) {
-                return res.status(400).json({ status: 'fail', message: 'OTP is incorrect' })
-            }
+            //     return res.status(200).json({ status: 'ok', message: 'OTP sent to the email' })
+            // }
+            // //otp verfication
+            // if (otp !== data?.otp) {
+            //     return res.status(400).json({ status: 'fail', message: 'OTP is incorrect' })
+            // }
 
-            data.otp = null;
-            await data.save();
+            // data.otp = null;
+            // await data.save();
 
             var ipInfo = getIP(req);
             const look = lookup(ipInfo?.clientIp);
@@ -234,22 +234,22 @@ const loginData = async (req, res) => {
                 return res.status(400).json({ message: "Incorrect Email or Password" })
             };
 
-            if (!otp || otp === null || otp === undefined) {
-                const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
-                console.log("otp ====> ", generatedOtp);
-                dataStaff.otp = generatedOtp;
-                await dataStaff.save();
-                await SendOtpToEmail(email, generatedOtp)
+            // if (!otp || otp === null || otp === undefined) {
+            //     const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
+            //     console.log("otp ====> ", generatedOtp);
+            //     dataStaff.otp = generatedOtp;
+            //     await dataStaff.save();
+            //     await SendOtpToEmail(email, generatedOtp)
 
-                return res.status(200).json({ status: 'ok', message: 'OTP sent to the email' })
-            }
-            //otp verfication
-            if (otp !== dataStaff?.otp) {
-                return res.status(400).json({ status: 'fail', message: 'OTP is incorrect' })
-            }
+            //     return res.status(200).json({ status: 'ok', message: 'OTP sent to the email' })
+            // }
+            // //otp verfication
+            // if (otp !== dataStaff?.otp) {
+            //     return res.status(400).json({ status: 'fail', message: 'OTP is incorrect' })
+            // }
 
-            dataStaff.otp = null;
-            await dataStaff.save();
+            // dataStaff.otp = null;
+            // await dataStaff.save();
 
             if (dataStaff?.type === "staff") {
                 var ipInfo = getIP(req);
