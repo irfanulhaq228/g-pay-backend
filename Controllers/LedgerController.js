@@ -110,8 +110,31 @@ const createData = async (req, res) => {
         const bankData = await Bank.findOne({ _id: bankId });
 
         if (bankData.accountType === "crypto") {
+            
+            const utrValue = req.body.utr;
+            const first5 = utrValue.substring(0, 5);
+            const last5 = utrValue.substring(utrValue.length - 5);
+
+            const similarCryptoUtr = await Ledger.findOne({
+                utr: { $exists: true, $ne: null },
+                status: { $in: ["Pending", "Approved"] },
+                $or: [
+                    { utr: { $regex: `^${first5}` } }, // starts with same first 5
+                    { utr: { $regex: `${last5}$` } }   // ends with same last 5
+                ]
+            });
+
+            if (similarCryptoUtr) {
+                return res.status(400).json({
+                    status: 'fail',
+                    message: 'This crypto transaction receipt seems to be duplicated. Transaction declined.'
+                });
+            }
+        }
+
+        if (bankData.accountType === "crypto") {
             const { inr } = await cryptoExchangeModel.findOne()
-            if (!inr) {
+            if (!inr || inr === "" || inr === undefined) {
                 return res.status(400).json({ status: 'fail', message: 'Crypto exchange rate not found!' });
             }
 

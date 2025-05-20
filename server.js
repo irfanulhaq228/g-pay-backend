@@ -88,7 +88,7 @@ app.use("/slip", TransactionSlipRoutes);
 app.use("/wallet-transfer", WalletTransferRouter);
 app.use("/location", locationRouters);
 app.use("/portal", portalRouter);
-app.use('/cryptoExchange', cryptoExhangeRouter )
+app.use('/cryptoExchange', cryptoExhangeRouter)
 
 // const extractPdfData = (pdfPath) => {
 //     return new Promise((resolve, reject) => {
@@ -194,17 +194,33 @@ app.post("/extract-utr", upload.single("image"), async (req, res) => {
 
     const extractedText = data.text;
 
-    const prompt = `
-      Extract only the UTR from the following text. If UTR is not present, extract "UPI Reference No" or "UPI transaction ID".
-      For UPI transaction  ID or UPI Reference No, the string is 12 digits so find out them in image.
-      If none of these are found, return null.
-      
-      ---TEXT START---
-      ${extractedText}
-      ---TEXT END---
+    // const prompt = `
+    //   Extract only the UTR from the following text. If UTR is not present, extract "UPI Reference No" or "UPI transaction ID".
+    //   For UPI transaction  ID or UPI Reference No, the string is 12 digits so find out them in image.
+    //   If none of these are found, return null.
 
-      Output only the extracted number, nothing else.
-    `;
+    //   ---TEXT START---
+    //   ${extractedText}
+    //   ---TEXT END---
+
+    //   Output only the extracted number, nothing else.
+    // `;
+
+    const prompt = `
+  Extract the transaction identifier from the following text. Follow this priority:
+
+  1. First, look for UTR (Unique Transaction Reference) number.
+  2. If UTR is not found, look for a UPI Reference No or UPI Transaction ID (these are usually 12-digit numeric strings).
+  3. If none of the above are present, look for a Hash . This is usually a long alphanumeric string (minimum 32 characters) used in crypto receipts.
+
+  Only one value should be returned, based on the above priority.
+
+  ---TEXT START---
+  ${extractedText}
+  ---TEXT END---
+
+  Output only the extracted value (UTR, UPI ID, or Hash ID). Return null if nothing is found.
+`;
 
     const response = await openai.chat.completions.create({
       model: "gpt-3.5-turbo",
