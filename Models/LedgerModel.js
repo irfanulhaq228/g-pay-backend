@@ -32,25 +32,25 @@ const ledgerSchema = new mongoose.Schema({
     site: { type: String },
     utrType: { type: String, default: "auto" },
     transactionReason: { type: String },
-    walletCredit: {type: Boolean, default: false},
+    walletCredit: { type: Boolean, default: false },
     approval: { type: Boolean, default: false }, // New field for transaction number
     trnNo: { type: String, unique: true }, // New field for transaction number
     trnStatus: { type: String, default: 'Transaction Pending' }, // New field for transaction number
     createdAt: {
         type: Date,
         default: () => new Date(Date.now() + 5.5 * 60 * 60 * 1000), // Adjust to IST
-      },
+    },
     updatedAt: {
         type: Date,
         default: () => new Date(Date.now() + 5.5 * 60 * 60 * 1000), // Adjust to IST
-      },
-      transactionLogs: {
+    },
+    transactionLogs: {
         type: [
             {
                 status: { type: String },
                 date: { type: Date, default: Date.now },
-                actionBy: { type: String,  },
-                reason: { type: String}
+                actionBy: { type: String, },
+                reason: { type: String }
             }
         ],
         default: []

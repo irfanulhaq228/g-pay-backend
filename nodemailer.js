@@ -42,28 +42,23 @@ const SendOtpToEmail = async (email, otp) => {
 };
 
 
-const sendFeedbackToAdmin = async (email, name, message) => {
-    const mailOptions = {
-        from: process.env.FROM_EMAIL,
-        to: email,
-        subject: 'Feedback from User',
-        html: `
+const sendFeedbackToAdmin = async (email, name, message, userPhoneNumber, userEmail) => {
+    const htmlContent = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 30px; border: 1px solid #e0e0e0; border-radius: 12px; background-color: #ffffff;">
-        <!-- Logo Section -->
         <div style="text-align: center; margin-bottom: 20px;">
-            <img src=${process.env.DOMAIN}/uploads/logo.png alt="G-Pay" style="height: 60px;" />
+            <img src="${process.env.DOMAIN}/uploads/logo.png" alt="G-Pay" style="height: 60px;" />
         </div>
 
-        <!-- Feedback Heading -->
         <h2 style="color: #222; text-align: center; margin-bottom: 10px;">📩 Feedback from <span style="color: #007BFF;">${name}</span></h2>
         <hr style="border: none; height: 1px; background-color: #ddd; margin: 20px 0;" />
 
-        <!-- Feedback Message -->
-        <p style="font-size: 16px; color: #333; line-height: 1.6;">
-            ${message}
-        </p>
+        <p style="font-size: 16px; color: #333; line-height: 1.6;">${message}</p>
 
-        <!-- Footer Note -->
+        <hr style="border: none; height: 1px; background-color: #eee; margin: 30px 0;" />
+
+        <p style="font-size: 14px; color: #555;"><strong>Phone Number:</strong> ${userPhoneNumber}</p>
+        ${userEmail ? `<p style="font-size: 14px; color: #555;"><strong>Email:</strong> ${userEmail}</p>` : ""}
+
         <hr style="border: none; height: 1px; background-color: #eee; margin: 30px 0;" />
         <p style="font-size: 13px; color: #999; text-align: center;">
             This feedback is sent to the admin team.
@@ -72,7 +67,13 @@ const sendFeedbackToAdmin = async (email, name, message) => {
             &copy; ${new Date().getFullYear()} Netrex. All rights reserved.
         </p>
     </div>
-`
+    `;
+
+    const mailOptions = {
+        from: process.env.FROM_EMAIL,
+        to: email,
+        subject: 'Feedback from User',
+        html: htmlContent,
     }
     try {
         await transporter.sendMail(mailOptions);

@@ -10,6 +10,7 @@ const withdrawSchema = new mongoose.Schema({
     customerName: {type: String},
     contactNumber: {type: String},
     token: {type: String},
+    remarks: {type: String},
     exchangeId: { type: mongoose.Schema.Types.ObjectId, ref: 'Exchange' },
     merchantId: { type: mongoose.Schema.Types.ObjectId, ref: 'Merchant' },
     adminId: { type: mongoose.Schema.Types.ObjectId, ref: 'Admin' },
@@ -33,6 +34,7 @@ const withdrawSchema = new mongoose.Schema({
             status: {type: String },
             actionBy: {type: String },
             date: {type: Date, default: Date.now },
+            remarks: {type: String },
           }
         ]
       }

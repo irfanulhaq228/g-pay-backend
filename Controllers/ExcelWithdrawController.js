@@ -5,6 +5,7 @@ const jwt = require('jsonwebtoken');
 const csvParser = require('csv-parser');
 const fs = require('fs');
 const xlsx = require('xlsx'); // For reading Excel files
+const adminStaffModel = require('../Models/AdminStaffModel');
 
 let myData = []; // Ensure myData is properly initialized
 
@@ -98,7 +99,7 @@ const uploadExcelData = async (req, res) => {
             return res.status(400).json({ status: 'fail', message: 'You have insufficient balance to withdraw!' });
         }
 
-        
+
         // **Update Merchant Wallet AFTER Calculating Total**
         await Merchant.findByIdAndUpdate(merchantData?._id, {
             wallet: merchantData.wallet - correctTotal
@@ -234,7 +235,7 @@ const createData = async (req, res) => {
     try {
 
 
-        
+
         console.log(req.body);
 
         const token = req.header('Authorization')?.replace('Bearer ', '');
@@ -246,7 +247,7 @@ const createData = async (req, res) => {
 
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
         var adminId = decoded.adminId;
-        
+
 
         if (!adminId) {
             return res.status(400).json({ status: 'fail', message: 'Merchant not found!' });
@@ -254,25 +255,25 @@ const createData = async (req, res) => {
 
         console.log("adminId ====> ", adminId);
 
-        const merchantData = await Merchant.findOne({_id:adminId});
-        
+        const merchantData = await Merchant.findOne({ _id: adminId });
+
         if (!req.body.amount) {
             return res.status(400).json({ status: 'fail', message: 'Must provide withdraw amount!' });
         }
 
-        console.log(merchantData,'mmmmmmmmmmm');
-        
+        console.log(merchantData, 'mmmmmmmmmmm');
 
-        if (((merchantData?.wallet?merchantData?.wallet:0) < req.body.amount) ) {
+
+        if (((merchantData?.wallet ? merchantData?.wallet : 0) < req.body.amount)) {
             return res.status(400).json({ status: 'fail', message: 'You have insufficient balance to withdraw!' });
         }
 
 
-        
-        const adminTotal = (req.body.amount * Number(merchantData?.payoutCommision?merchantData?.payoutCommision:0)) / 100;
+
+        const adminTotal = (req.body.amount * Number(merchantData?.payoutCommision ? merchantData?.payoutCommision : 0)) / 100;
         const merchantTotal = req.body.amount - adminTotal;
 
-        
+
 
 
         const excelFileEntry = await ExcelFile.create({
@@ -281,7 +282,7 @@ const createData = async (req, res) => {
             fileName: 'Custom Upload'
         });
 
-        
+
 
 
         const data = await ExcelWithdraw.create({
@@ -289,7 +290,7 @@ const createData = async (req, res) => {
             merchantId: adminId,
             withdrawAmount: Number(merchantTotal),
             adminAmount: Number(adminTotal),
-            amount: Number(req.body.amount),  excelFileId: excelFileEntry._id,
+            amount: Number(req.body.amount), excelFileId: excelFileEntry._id,
         });
 
 
@@ -424,9 +425,7 @@ const updateData = async (req, res) => {
         let getImage = await ExcelWithdraw.findById(id);
         const image = req.file === undefined ? getImage?.image : req.file?.path;
 
-
         const merchantData = await Merchant.findById(getImage?.merchantId)
-
 
         if (req.body.status === 'Cancel') {
             await Merchant.findByIdAndUpdate(getImage?.merchantId, {
@@ -434,16 +433,39 @@ const updateData = async (req, res) => {
             })
         }
 
-
         if (req.body.status === 'Decline') {
             await Merchant.findByIdAndUpdate(getImage?.merchantId, {
                 wallet: merchantData?.wallet + getImage.amount
             })
         }
 
+        if (req.body.status === "Approved" && getImage?.status === "Decline") {
+            await Merchant.findByIdAndUpdate(getImage?.merchantId, {
+                wallet: merchantData?.wallet - getImage.amount
+            })
+        }
 
+        const date = new Date(Date.now());
+        let actionBy = "";
+        if (req.body.adminStaffId) {
+            const staff = await adminStaffModel.findById(req.body.adminStaffId);
+            if (staff) {
+                actionBy = staff.userName;
+            }
+        } else {
+            actionBy = "Admin";
+        }
         const data = await ExcelWithdraw.findByIdAndUpdate(id,
-            { ...req.body, image },
+            {
+                ...req.body, image, $push: {
+                    transactionLogs: {
+                        status: req.body.status,
+                        actionBy,
+                        date,
+                        remarks: req.body.remarks || "",
+                    }
+                }
+            },
             { new: true });
         return res.status(200).json({ status: 'ok', data });
     } catch (err) {

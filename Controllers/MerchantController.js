@@ -55,7 +55,7 @@ const createData = async (req, res) => {
         const image = req.file;
 
         const data = await Merchant.create({
-            ...req.body, image: image ? image?.path : "", adminId
+            ...req.body, image: image ? image?.path : "", adminId, remainingAccountLimit: req.body.accountLimit
         });
 
 

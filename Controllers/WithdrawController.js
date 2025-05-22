@@ -214,6 +214,7 @@ const updateData = async (req, res) => {
                             status: req.body.status,
                             actionBy,
                             date,
+                            remarks: req.body.remarks
                         }
                     }
                 }

@@ -219,17 +219,19 @@ const updateData = async (req, res) => {
 
 const sendFeedbackToAdminAPI = async (req, res) => {
     try {
-        const {feedbackMessage, feedbackSender} = req.body
-        if (!feedbackMessage || !feedbackSender) {
+        const {feedbackMessage, feedbackSender, userPhoneNumber, userEmail} = req.body
+        if (!feedbackMessage || !feedbackSender || !userPhoneNumber) {
             return res.status(400).json({status: 'fail', message: 'Please provide all fields'})
         }
         const adminEmail = await adminModel.findOne()
         if (!adminEmail?.email) {
             return res.status(400).json({status: 'fail', message: 'Admin not found!'})
         }
+
+         const emailToSend = userEmail && userEmail.trim() !== "" ? userEmail : null;
         
-        console.log("feedback api ran....")
-        await sendFeedbackToAdmin(adminEmail?.email, feedbackSender, feedbackMessage)
+        console.log("feedback api running....")
+        await sendFeedbackToAdmin(adminEmail?.email, feedbackSender, feedbackMessage, userPhoneNumber, emailToSend)   
 
         return res.status(200).json({status: 'ok', message: 'Feedback sent successfully'})
 

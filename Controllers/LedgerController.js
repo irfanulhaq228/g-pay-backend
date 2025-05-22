@@ -110,7 +110,7 @@ const createData = async (req, res) => {
         const bankData = await Bank.findOne({ _id: bankId });
 
         if (bankData.accountType === "crypto") {
-            
+
             const utrValue = req.body.utr;
             const first5 = utrValue.substring(0, 5);
             const last5 = utrValue.substring(utrValue.length - 5);
@@ -1902,11 +1902,10 @@ const getBankMerchantDataByAdmin = async (req, res) => {
 const updateData = async (req, res) => {
     try {
         let id = req.params.id;
-        console.log("update request: ", req.body);
-
 
         let getImage = await Ledger.findById(id);
         const image = req.file === undefined ? getImage?.image : req.file?.path;
+
         let activity = "";
         if (req.body.website || req.body.username) {
             if (req.body.website !== getImage?.site && req.body.username !== getImage?.username) {
@@ -1916,8 +1915,175 @@ const updateData = async (req, res) => {
             } else if (req.body.website === getImage?.site && req.body.username !== getImage?.username) {
                 activity = "UserId is changed"
             }
+        };
+
+        if (req.body.status === 'Approved' && getImage?.status !== 'Approved') {
+
+            let bankData = await Bank.findById(getImage?.bankId);
+
+            let merchantData = await Merchant.findById(getImage?.merchantId)
+
+            if (!merchantData) {
+                return res.status(400).json({ status: 'fail', message: 'Merchant not found!' })
+            };
+
+            const transactionAmount = getImage?.total;
+
+            if (merchantData.remainingDailyMerchantLimit <= transactionAmount || merchantData.remainingDailyMerchantLimit <= 0) {
+                await Merchant.findByIdAndUpdate(getImage.merchantId, { block: true }, { new: true });
+                return res.status(400).json({ status: 'fail', message: 'Merchant daily transaction limit exceeded. Please try again tomorrow.' });
+            };
+
+            // if (merchantData?.accountLimit < transactionAmount) {
+            //     return res.status(400).json({ status: 'fail', message: 'Merchant account limit exceeded. Please try again tomorrow.' });
+            // };
+
+            // if (bankData.remainingDailyLimit <= transactionAmount || bankData.remainingDailyLimit <= 0) {
+            //     return res.status(400).json({ status: 'fail', message: 'Bank daily transaction limit exceeded. Please try again tomorrow.' });
+            // };
+
+            await Merchant.findByIdAndUpdate(getImage.merchantId, { $inc: { wallet: getImage?.merchantTotal } }, { new: true });
+
+            const remainingTransLimit = bankData?.remainingTransLimit - 1;
+            const remainingLimit = bankData?.remainingLimit - transactionAmount;
+            const remainingDailyLimit = bankData?.remainingDailyLimit - transactionAmount;
+            const remainingDailyMerchantLimit = merchantData?.remainingDailyMerchantLimit - transactionAmount;
+            const remainingAccountLimit = merchantData?.remainingAccountLimit - transactionAmount;
+
+            await Bank.findByIdAndUpdate(bankData?._id,
+                {
+                    remainingTransLimit,
+                    remainingLimit,
+                    remainingDailyLimit
+                },
+                { new: true }
+            );
+            await Merchant.findByIdAndUpdate(merchantData?._id,
+                {
+                    remainingDailyMerchantLimit,
+                    remainingAccountLimit
+                },
+                { new: true }
+            );
+
+            // if (bankData?.remainingTransLimit === 0 || bankData?.remainingLimit < transactionAmount) {
+            //     await Bank.findOneAndUpdate({ _id: bankData?._id }, { block: true }, { new: true });
+            //     await BankLog.create({ bankId: bankData?._id, status: 'InActive', reason: 'Due to Transaction Limit Exceed.' });
+
+            //     const suitAbleBank = await Bank.findOneAndUpdate({
+            //         accountType: bankData?.accountType,
+            //         $expr: {
+            //             $and: [
+            //                 { $gt: ["$remainingLimit", transactionAmount] },
+            //                 { $gt: ["$remainingTransLimit", 0] }
+            //             ]
+            //         }
+            //     }, { block: false }, { new: true });
+
+            //     if (!suitAbleBank) {
+            //         return res.status(400).json({ status: 'fail', message: 'All bank accounts reached the maximum limit. Please contact support!' });
+            //     };
+            //     await BankLog.create({ bankId: suitAbleBank?._id, status: 'Active', reason: 'Bank is Active automatically.' });
+            //     await Merchant.findByIdAndUpdate(getImage.merchantId, { $inc: { wallet: getImage?.merchantTotal } }, { new: true });
+            //     await Bank.findByIdAndUpdate(suitAbleBank?._id,
+            //         {
+            //             remainingTransLimit: suitAbleBank?.remainingTransLimit - 1,
+            //             remainingLimit: suitAbleBank?.remainingLimit - transactionAmount,
+            //             remainingDailyLimit: suitAbleBank?.remainingDailyLimit - transactionAmount
+            //         },
+            //         { new: true }
+            //     );
+            // } else {
+            //     await Merchant.findByIdAndUpdate(getImage.merchantId, { $inc: { wallet: getImage?.merchantTotal } }, { new: true });
+
+            //     const remainingTransLimit = bankData?.remainingTransLimit - 1;
+            //     const remainingLimit = bankData?.remainingLimit - transactionAmount;
+            //     const remainingDailyLimit = bankData?.remainingDailyLimit - transactionAmount;
+            //     const remainingDailyMerchantLimit = merchantData?.remainingDailyMerchantLimit - transactionAmount;
+            //     const remainingAccountLimit = merchantData?.remainingAccountLimit - transactionAmount;
+
+            //     await Bank.findByIdAndUpdate(bankData?._id,
+            //         {
+            //             remainingTransLimit,
+            //             remainingLimit,
+            //             remainingDailyLimit,
+
+            //         },
+            //         { new: true }
+            //     );
+            //     await Merchant.findByIdAndUpdate(merchantData?._id,
+            //         {
+            //             remainingDailyMerchantLimit,
+            //             remainingAccountLimit
+            //         },
+            //         { new: true }
+            //     );
+
+            // };
+
         }
 
+        if (req.body.status === "Decline" && getImage?.status === "Approved") {
+
+            let bankData = await Bank.findById(getImage?.bankId);
+
+            let merchantData = await Merchant.findById(getImage?.merchantId)
+
+            if (!merchantData) {
+                return res.status(400).json({ status: 'fail', message: 'Merchant not found!' })
+            }
+
+            const transactionAmount = getImage?.total;
+
+            await Merchant.findByIdAndUpdate(getImage.merchantId, { $inc: { wallet: -getImage?.merchantTotal } }, { new: true });
+
+            const remainingTransLimit = bankData?.remainingTransLimit + 1;
+            const remainingLimit = bankData?.remainingLimit + transactionAmount;
+            const remainingDailyLimit = bankData?.remainingDailyLimit + transactionAmount;
+            const remainingDailyMerchantLimit = merchantData?.remainingDailyMerchantLimit + transactionAmount;
+            const remainingAccountLimit = merchantData?.remainingAccountLimit + transactionAmount;
+
+
+            await Bank.findByIdAndUpdate(bankData?._id,
+                {
+                    remainingTransLimit,
+                    remainingLimit,
+                    remainingDailyLimit,
+                },
+                { new: true }
+            );
+
+            await Merchant.findByIdAndUpdate(merchantData?._id,
+                {
+                    remainingDailyMerchantLimit,
+                    remainingAccountLimit
+                },
+                { new: true }
+            )
+        }
+
+        const data = await Ledger.findByIdAndUpdate(
+            id,
+            {
+                ...req.body,
+                image: image,
+                activity
+            },
+            { new: true }
+        );
+
+        const updateDataLedger = await Ledger.findById(data?._id).populate(['merchantId', "bankId", "adminStaffId"])
+
+        notifyUsers(getImage.merchantId, "ledgerUpdated", { type: "updated", ledger: updateDataLedger });
+
+        if (req.body.status) {
+            await notifySubscribers('ledger.status.updated', {
+                transactionId: data?.trnNo,
+                amount: data?.total,
+                username: data?.username,
+                status: req.body.status
+            }, data?.merchantId?.toHexString());
+        }
 
         if (req.body.status && req.body.status !== getImage?.status) {
             const date = new Date(Date.now());
@@ -1947,101 +2113,6 @@ const updateData = async (req, res) => {
                     }
                 }
             );
-        }
-
-
-        if (req.body.status === 'Approved' && getImage?.status !== 'Approved') {
-            console.log("=========================================================================================")
-            let bankData = await Bank.findById(getImage?.bankId);
-            await Merchant.findByIdAndUpdate(getImage.merchantId, { $inc: { wallet: getImage?.merchantTotal } }, { new: true });
-
-
-            const remainingTransLimit = bankData?.remainingTransLimit - 1
-            const remainingLimit = bankData?.remainingLimit - getImage?.total
-
-
-
-
-            if ((remainingTransLimit === 0) && (remainingLimit <= 0)) {
-
-                await Bank.findOneAndUpdate({ _id: bankData?._id }, { block: true }, { new: true });
-                await BankLog.create({ bankId: bankData?._id, status: 'InActive', reason: 'Due to Transaction Limit Exceed.' })
-
-
-                const banks = await Bank.find({
-                    accountType: bankData?.accountType,
-                    $expr: {
-                        $and: [
-                            { $gt: ["$remainingLimit", getImage?.total] },
-                            { $gt: ["$remainingTransLimit", 1] }
-                        ]
-                    }
-                });
-
-                if (banks?.length === 0) {
-                    return res.status(400).json({ status: 'fail', message: 'All bank accounts reach the maximum limit of transaction. Please contact to the support!' });
-                }
-
-                await Bank.findOneAndUpdate(
-                    { _id: banks[0]._id },
-                    { block: false, },
-                    { new: true }
-                );
-
-
-
-
-                await BankLog.create({ bankId: banks[0]?._id, status: 'Active', reason: 'Bank is Active automatically.' })
-
-            }
-            else {
-                await Bank.findByIdAndUpdate(bankData?._id,
-                    { remainingTransLimit, remainingLimit },
-                    { new: true });
-            }
-
-        }
-
-        if (req.body.status === "Decline" && getImage?.status === "Approved") {
-
-            await Merchant.findByIdAndUpdate(getImage.merchantId, { $inc: { wallet: -getImage?.merchantTotal } }, { new: true });
-
-            let bankData = await Bank.findById(getImage?.bankId);
-
-            const remainingTransLimit = bankData?.remainingTransLimit + 1
-            const remainingLimit = bankData?.remainingLimit + getImage?.total
-
-            await Bank.findByIdAndUpdate(bankData?._id,
-                { remainingTransLimit: remainingTransLimit },
-                { remainingLimit: remainingLimit },
-            );
-        }
-
-        const data = await Ledger.findByIdAndUpdate(
-            id,
-            {
-                ...req.body,
-                image: image,
-                activity,
-                ...(req.body.status === "Approved" && !getImage?.walletCredit && { walletCredit: true }),
-                ...(req.body.status === "Decline" && getImage?.walletCredit && { walletCredit: false })
-            },
-            { new: true }
-        );
-
-        const updateDataLedger = await Ledger.findById(data?._id).populate(['merchantId', "bankId", "adminStaffId"])
-
-
-        notifyUsers(getImage.merchantId, "ledgerUpdated", { type: "updated", ledger: updateDataLedger });
-
-
-        if (req.body.status) {
-            await notifySubscribers('ledger.status.updated', {
-                transactionId: data?.trnNo,
-                amount: data?.total,
-                username: data?.username,
-                status: req.body.status
-            }, data?.merchantId?.toHexString());
         }
 
         return res.status(200).json({ status: 'ok', data });

@@ -42,6 +42,8 @@ const locationRouters = require("./Routes/LocationRoutes.js");
 const portalRouter = require("./Routes/PortalRoutes.js");
 const receiptRouter = require("./Routes/ReceiptRouter.js");
 const cryptoExhangeRouter = require("./Routes/CryptoExchageRoutes.js");
+const merchantModel = require("./Models/MerchantModel.js");
+const bankModel = require("./Models/BankModel.js");
 
 dotenv.config();
 const app = express();
@@ -273,7 +275,7 @@ const declineOldLedgers = async () => {
         createdAt: { $lt: thresholdTime }, // Change here: Using `$lt` to get older ledgers
         status: 'Pending',
       },
-      { $set: { status: "Decline", trnStatus: 'Transaction Decline' } }
+      { $set: { status: "Decline", trnStatus: 'Transaction Decline', transactionLogs: [{ status: "Decline", date: new Date(), actionBy: "Auto", reason: "Auto Decline" }] } }
     );
 
   } catch (error) {
@@ -283,10 +285,74 @@ const declineOldLedgers = async () => {
 
 setInterval(() => {
   declineOldLedgers()
-}, 3000);
+}, 60*1000);
 
+const fn_resetTimeZone = async () => {
+  try {
+    const now = new Date(Date.now() + 5.5 * 60 * 60 * 1000); // IST timezone adjustment
+    const todayStr = now.toISOString().split("T")[0]; // 'YYYY-MM-DD'
 
+    // Find merchants where lastLimitResetDate is NOT today
+    const merchants = await merchantModel.find({
+      $expr: {
+        $ne: [
+          { $dateToString: { format: "%Y-%m-%d", date: "$lastLimitResetDate" } },
+          todayStr
+        ]
+      }
+    });
 
+    const banks = await bankModel.find({
+      $expr: {
+        $ne: [
+          { $dateToString: { format: "%Y-%m-%d", date: "$lastLimitResetDate" } },
+          todayStr
+        ]
+      }
+    });
+
+    if (merchants.length > 0) {
+      const bulkOps = merchants.map(merchant => ({
+        updateOne: {
+          filter: { _id: merchant._id },
+          update: {
+            $set: {
+              lastLimitResetDate: now,
+              remainingDailyMerchantLimit: merchant.dailyMerchantLimit
+            }
+          }
+        }
+      }));
+
+      await merchantModel.bulkWrite(bulkOps);
+      console.log("Merchant limits reset for date:", todayStr);
+    } else {
+      console.log("No merchants needed reset today.");
+    };
+
+    if (banks.length > 0) {
+      const bulkOps = banks.map(bank => ({
+        updateOne: {
+          filter: { _id: bank._id },
+          update: {
+            $set: {
+              lastLimitResetDate: now,
+              remainingDailyLimit: bank.dailyLimit
+            }
+          }
+        }
+      }));
+
+      await bankModel.bulkWrite(bulkOps);
+      console.log("Banks limits reset for date:", todayStr);
+    } else {
+      console.log("No banks needed reset today.");
+    };
+
+  } catch (error) {
+    console.error("Error resetting merchant limits:", error);
+  }
+};
 
 const server = require('http').createServer(app)
 
@@ -300,9 +366,9 @@ const io = new Server(server, {
 ledger.initializeSocket(io);
 
 
-
-
-
 server.listen(process.env.PORT, () => {
   console.log(`Server runs at port ${process.env.PORT}`);
+  setInterval(() => {
+    fn_resetTimeZone();
+  }, 5 * 60 * 1000);
 });
